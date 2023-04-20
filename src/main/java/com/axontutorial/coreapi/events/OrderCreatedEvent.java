@@ -1,15 +1,15 @@
-package com.axontutorial.coreapi.commands;
+package com.axontutorial.coreapi.events;
 
 import lombok.Data;
-import org.axonframework.modelling.command.TargetAggregateIdentifier;
 
 import java.util.Objects;
 
+// Aggregate will handle the commands
+// It is in charge of deciding if order can be created.
+// It will notify the rest of the application of its decision by publishing an event.
 @Data
-public class CreateOrderCommand {
+public class OrderCreatedEvent {
 
-    // The TargetAggregateIdentifier annotation tells Axon that the annotated field is an id of a given aggregate to which the command should be targeted.
-    @TargetAggregateIdentifier
     private final String orderId;
 
     @Override
@@ -20,7 +20,7 @@ public class CreateOrderCommand {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        CreateOrderCommand that = (CreateOrderCommand) o;
+        OrderCreatedEvent that = (OrderCreatedEvent) o;
         return Objects.equals(orderId, that.orderId);
     }
 
@@ -31,6 +31,6 @@ public class CreateOrderCommand {
 
     @Override
     public String toString() {
-        return "CreateOrderCommand{" + "orderId='" + orderId + '\'' + '}';
+        return "OrderCreatedEvent{" + "orderId='" + orderId + '\'' + '}';
     }
 }
