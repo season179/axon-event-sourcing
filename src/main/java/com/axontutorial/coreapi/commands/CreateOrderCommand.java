@@ -1,12 +1,14 @@
 package com.axontutorial.coreapi.commands;
 
 import lombok.Data;
+import org.axonframework.modelling.command.TargetAggregateIdentifier;
 
 import java.util.Objects;
 
 @Data
 public class CreateOrderCommand {
 
+    @TargetAggregateIdentifier
     private final String orderId;
 
     @Override
