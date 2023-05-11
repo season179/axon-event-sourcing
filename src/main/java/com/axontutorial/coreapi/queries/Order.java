@@ -1,24 +1,46 @@
 package com.axontutorial.coreapi.queries;
 
-import lombok.Getter;
-
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public class Order {
-
-    @Getter
     private final String orderId;
-
-    @Getter
-    private final String productId;
-
-    @Getter
+    private final Map<String, Integer> products;
     private OrderStatus orderStatus;
 
-    public Order(String orderId, String productId) {
+    public Order(String orderId) {
         this.orderId = orderId;
-        this.productId = productId;
-        this.orderStatus = OrderStatus.CREATED;
+        this.products = new HashMap<>();
+        orderStatus = OrderStatus.CREATED;
+    }
+
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public Map<String, Integer> getProducts() {
+        return products;
+    }
+
+    public OrderStatus getOrderStatus() {
+        return orderStatus;
+    }
+
+    public void addProduct(String productId) {
+        products.putIfAbsent(productId, 1);
+    }
+
+    public void incrementProductInstance(String productId) {
+        products.computeIfPresent(productId, (id, count) -> ++count);
+    }
+
+    public void decrementProductInstance(String productId) {
+        products.computeIfPresent(productId, (id, count) -> --count);
+    }
+
+    public void removeProduct(String productId) {
+        products.remove(productId);
     }
 
     public void setOrderConfirmed() {
@@ -38,16 +60,16 @@ public class Order {
             return false;
         }
         Order that = (Order) o;
-        return Objects.equals(orderId, that.orderId) && Objects.equals(productId, that.productId) && orderStatus == that.orderStatus;
+        return Objects.equals(orderId, that.orderId) && Objects.equals(products, that.products) && orderStatus == that.orderStatus;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(orderId, productId, orderStatus);
+        return Objects.hash(orderId, products, orderStatus);
     }
 
     @Override
     public String toString() {
-        return "Order{" + "orderId='" + orderId + '\'' + ", productId=" + productId + ", orderStatus=" + orderStatus + '}';
+        return "Order{" + "orderId='" + orderId + '\'' + ", products=" + products + ", orderStatus=" + orderStatus + '}';
     }
 }

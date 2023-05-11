@@ -1,17 +1,21 @@
 package com.axontutorial.commandmodel.order;
 
+import com.axontutorial.coreapi.commands.AddProductCommand;
 import com.axontutorial.coreapi.commands.ConfirmOrderCommand;
 import com.axontutorial.coreapi.commands.CreateOrderCommand;
 import com.axontutorial.coreapi.commands.ShipOrderCommand;
-import com.axontutorial.coreapi.events.OrderConfirmedEvent;
-import com.axontutorial.coreapi.events.OrderCreatedEvent;
-import com.axontutorial.coreapi.events.OrderShippedEvent;
+import com.axontutorial.coreapi.events.*;
+import com.axontutorial.coreapi.exceptions.DuplicateOrderLineException;
+import com.axontutorial.coreapi.exceptions.OrderAlreadyConfirmedException;
 import com.axontutorial.coreapi.exceptions.UnconfirmedOrderException;
 import org.axonframework.commandhandling.CommandHandler;
 import org.axonframework.eventsourcing.EventSourcingHandler;
 import org.axonframework.modelling.command.AggregateIdentifier;
-import org.axonframework.modelling.command.AggregateLifecycle;
+import org.axonframework.modelling.command.AggregateMember;
 import org.axonframework.spring.stereotype.Aggregate;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.axonframework.modelling.command.AggregateLifecycle.apply;
 
@@ -28,30 +32,31 @@ public class OrderAggregate {
      */
     @AggregateIdentifier
     private String orderId;
-
     private boolean orderConfirmed;
 
-    /**
-     * The aggregate will commence its life cycle upon handling the CreateOrderCommand in the OrderAggregate 'command handling constructor'.
-     * To tell the framework that the given function is able to handle commands, we'll add the `@CommandHandler` annotation.
-     * When handling the CreateOrderCommand, it will notify the rest of the application that an order was created by publishing the OrderCreatedEvent.
-     *
-     * @param command
-     */
+    @AggregateMember
+    private Map<String, OrderLine> orderLines;
+
     @CommandHandler
     public OrderAggregate(CreateOrderCommand command) {
-        AggregateLifecycle.apply(new OrderCreatedEvent(command.getOrderId()));
+        apply(new OrderCreatedEvent(command.getOrderId()));
     }
 
-    // To be able to source an aggregate based on its events, Axon requires a default constructor.
     protected OrderAggregate() {
+        // Required by Axon to build a default Aggregate prior to Event Sourcing
     }
 
-    // The signature of the command and event sourcing handlers simply state handle(the-command) and on(the-event) to maintain a concise format.
-    @EventSourcingHandler
-    public void on(OrderCreatedEvent event) {
-        this.orderId = event.getOrderId();
-        this.orderConfirmed = false;
+    @CommandHandler
+    public void handle(AddProductCommand command) {
+        if (orderConfirmed) {
+            throw new OrderAlreadyConfirmedException(orderId);
+        }
+
+        String productId = command.getProductId();
+        if (orderLines.containsKey(productId)) {
+            throw new DuplicateOrderLineException(productId);
+        }
+        apply(new ProductAddedEvent(orderId, productId));
     }
 
     @CommandHandler
@@ -59,6 +64,7 @@ public class OrderAggregate {
         if (orderConfirmed) {
             return;
         }
+
         apply(new OrderConfirmedEvent(orderId));
     }
 
@@ -67,11 +73,30 @@ public class OrderAggregate {
         if (!orderConfirmed) {
             throw new UnconfirmedOrderException();
         }
+
         apply(new OrderShippedEvent(orderId));
     }
 
     @EventSourcingHandler
+    public void on(OrderCreatedEvent event) {
+        this.orderId = event.getOrderId();
+        this.orderConfirmed = false;
+        this.orderLines = new HashMap<>();
+    }
+
+    @EventSourcingHandler
     public void on(OrderConfirmedEvent event) {
-        orderConfirmed = true;
+        this.orderConfirmed = true;
+    }
+
+    @EventSourcingHandler
+    public void on(ProductAddedEvent event) {
+        String productId = event.getProductId();
+        this.orderLines.put(productId, new OrderLine(productId));
+    }
+
+    @EventSourcingHandler
+    public void on(ProductRemovedEvent event) {
+        this.orderLines.remove(event.getProductId());
     }
 }
